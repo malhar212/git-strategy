@@ -287,9 +287,121 @@ git branch
 echo ""
 
 # ============================================
-# STEP 6: Remote setup
+# STEP 6: Commit setup files
 # ============================================
-echo -e "${BLUE}Step 6: Remote repository setup...${NC}"
+echo -e "${BLUE}Step 6: Committing setup files...${NC}"
+echo ""
+
+# Files we want to commit (and later lock)
+SETUP_FILES=(
+  ".husky/"
+  ".github/"
+  "commitlint.config.js"
+  ".gitignore"
+  "package.json"
+)
+
+# Patterns to lock in .gitignore after committing
+LOCK_PATTERNS=(
+  ".husky/"
+  ".github/"
+  "commitlint.config.js"
+)
+
+# Step 6a: Temporarily remove lock patterns from .gitignore if present
+# This allows us to commit the files even if they were pre-ignored
+REMOVED_PATTERNS=()
+if [ -f ".gitignore" ]; then
+  for pattern in "${LOCK_PATTERNS[@]}"; do
+    if grep -qxF "$pattern" .gitignore 2>/dev/null; then
+      echo -e "  ${YELLOW}→${NC} Temporarily removing $pattern from .gitignore"
+      # Remove the pattern (macOS compatible sed)
+      sed -i '' "/^$(echo "$pattern" | sed 's/[\/&]/\\&/g')$/d" .gitignore 2>/dev/null || \
+      sed -i "/^$(echo "$pattern" | sed 's/[\/&]/\\&/g')$/d" .gitignore
+      REMOVED_PATTERNS+=("$pattern")
+    fi
+  done
+fi
+
+# Step 6b: Add and commit setup files
+FILES_TO_ADD=""
+for file in "${SETUP_FILES[@]}"; do
+  if [ -e "$file" ]; then
+    FILES_TO_ADD="$FILES_TO_ADD $file"
+  fi
+done
+
+if [ -n "$FILES_TO_ADD" ]; then
+  git add -f $FILES_TO_ADD 2>/dev/null  # -f to force add even if in .gitignore
+
+  if ! git diff --cached --quiet; then
+    echo -e "${GREEN}Committing setup files...${NC}"
+    git commit -m "chore(CU-setup): add Release Branch Isolation setup files" --no-verify
+    echo -e "  ${GREEN}✓${NC} Setup files committed"
+  else
+    echo -e "  ${GREEN}✓${NC} Setup files already committed"
+  fi
+else
+  echo -e "  ${GREEN}✓${NC} No setup files to commit"
+fi
+
+echo ""
+
+# ============================================
+# STEP 6.1: Lock setup files in .gitignore
+# ============================================
+echo -e "${BLUE}Step 6.1: Locking setup files in .gitignore...${NC}"
+echo ""
+
+# Ensure .gitignore exists
+if [ ! -f ".gitignore" ]; then
+  touch .gitignore
+fi
+
+# Check if we need to add the section header
+NEEDS_HEADER=0
+for pattern in "${LOCK_PATTERNS[@]}"; do
+  if ! grep -qxF "$pattern" .gitignore 2>/dev/null; then
+    NEEDS_HEADER=1
+    break
+  fi
+done
+
+# Add section header if we're adding new patterns
+if [ $NEEDS_HEADER -eq 1 ]; then
+  if ! grep -qF "# GIT and GITHUB" .gitignore 2>/dev/null; then
+    echo "" >> .gitignore
+    echo "# GIT and GITHUB" >> .gitignore
+  fi
+fi
+
+ADDED_PATTERNS=0
+for pattern in "${LOCK_PATTERNS[@]}"; do
+  # Check if pattern already exists in .gitignore
+  if ! grep -qxF "$pattern" .gitignore 2>/dev/null; then
+    echo "$pattern" >> .gitignore
+    echo -e "  ${GREEN}+${NC} Added $pattern to .gitignore"
+    ADDED_PATTERNS=1
+  else
+    echo -e "  ${GREEN}✓${NC} $pattern already in .gitignore"
+  fi
+done
+
+if [ $ADDED_PATTERNS -eq 1 ]; then
+  # Commit the .gitignore update
+  git add .gitignore
+  if ! git diff --cached --quiet; then
+    git commit -m "chore(CU-setup): lock setup files in .gitignore" --no-verify
+    echo -e "  ${GREEN}✓${NC} .gitignore updated and committed"
+  fi
+fi
+
+echo ""
+
+# ============================================
+# STEP 7: Remote setup
+# ============================================
+echo -e "${BLUE}Step 7: Remote repository setup...${NC}"
 echo ""
 
 # Check if remote already exists
@@ -328,13 +440,13 @@ if [ -n "$EXISTING_REMOTE" ]; then
   if [[ ! "$push_now" =~ ^[Nn]$ ]]; then
     echo ""
     echo -e "${GREEN}Pushing main branch...${NC}"
-    if ! git push -u origin main 2>&1; then
+    if ! git push -u origin main --no-verify 2>&1; then
       echo -e "${YELLOW}Push failed. Remote may have existing history.${NC}"
       echo "You can try: git pull origin main --rebase"
     fi
 
     echo -e "${GREEN}Pushing staging branch...${NC}"
-    if ! git push -u origin staging 2>&1; then
+    if ! git push -u origin staging --no-verify 2>&1; then
       echo -e "${YELLOW}Push failed for staging.${NC}"
     fi
   fi
