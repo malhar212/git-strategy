@@ -4,7 +4,20 @@
   "main": "index.js",
   "scripts": {
     "0": "husky",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky",
+    "git:feature": "bash .husky/scripts/git-feature.sh",
+    "git:sync": "bash .husky/scripts/git-sync.sh",
+    "git:release": "bash .husky/scripts/git-release.sh",
+    "git:sync-feature": "bash .husky/scripts/git-sync-feature.sh",
+    "git:to-staging": "bash .husky/scripts/git-to-staging.sh",
+    "git:ship": "bash .husky/scripts/git-ship.sh",
+    "git:hotfix": "bash .husky/scripts/git-hotfix.sh",
+    "git:status": "bash .husky/scripts/git-status.sh",
+    "git:setup": "bash .husky/scripts/setup-git.sh",
+    "git:setup-rulesets": "bash .husky/scripts/setup-rulesets.sh",
+    "git:merge-staging": "bash .husky/scripts/git-merge-staging.sh",
+    "git:merge-main": "bash .husky/scripts/git-merge-main.sh"
   },
   "author": "",
   "license": "ISC",
