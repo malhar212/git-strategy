@@ -89,7 +89,9 @@ if [ "$SKIP_MAIN" = false ]; then
       "parameters": {
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
         "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
         "allowed_merge_methods": ["squash"]
       }
     },
@@ -142,12 +144,16 @@ if [ "$SKIP_STAGING" = false ]; then
       "parameters": {
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
         "allowed_merge_methods": ["merge"]
       }
     },
     {
       "type": "required_status_checks",
       "parameters": {
+        "strict_required_status_checks_policy": false,
         "required_status_checks": [
           {"context": "validate-pr"},
           {"context": "validate-branch-name"}
