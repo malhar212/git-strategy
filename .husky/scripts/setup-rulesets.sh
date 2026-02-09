@@ -41,6 +41,43 @@ fi
 echo -e "Repository: ${BLUE}${REPO}${NC}"
 echo ""
 
+# ============================================
+# STEP 1: Configure repository settings
+# ============================================
+echo -e "${BLUE}Step 1: Configuring repository settings...${NC}"
+echo ""
+
+# Set merge commit messages to use PR title
+echo -e "  ${GREEN}Setting merge commit messages to use PR title...${NC}"
+gh api "repos/${REPO}" -X PATCH --input - << 'EOF' > /dev/null
+{
+  "squash_merge_commit_title": "PR_TITLE",
+  "squash_merge_commit_message": "PR_BODY",
+  "merge_commit_title": "PR_TITLE",
+  "merge_commit_message": "PR_BODY"
+}
+EOF
+echo -e "  ${GREEN}✓${NC} Squash merge will use PR title as commit message"
+echo -e "  ${GREEN}✓${NC} Merge commit will use PR title as commit message"
+
+# Set GitHub Actions workflow permissions
+echo -e "  ${GREEN}Setting GitHub Actions workflow permissions...${NC}"
+gh api "repos/${REPO}/actions/permissions/workflow" -X PUT --input - << 'EOF' > /dev/null
+{
+  "default_workflow_permissions": "write",
+  "can_approve_pull_request_reviews": true
+}
+EOF
+echo -e "  ${GREEN}✓${NC} GitHub Actions has read/write permissions"
+echo -e "  ${GREEN}✓${NC} GitHub Actions can create and approve PRs"
+echo ""
+
+# ============================================
+# STEP 2: Create rulesets
+# ============================================
+echo -e "${BLUE}Step 2: Creating branch rulesets...${NC}"
+echo ""
+
 # Check for existing rulesets
 echo -e "${YELLOW}Checking for existing rulesets...${NC}"
 EXISTING=$(gh api "repos/${REPO}/rulesets" --jq '.[].name' 2>/dev/null || echo "")
@@ -65,8 +102,7 @@ echo ""
 if [ "$SKIP_MAIN" = false ]; then
   echo -e "${GREEN}Creating 'main-protection' ruleset...${NC}"
   echo -e "  - Merge method: ${BLUE}squash only${NC}"
-  echo -e "  - Required approvals: ${BLUE}1${NC}"
-  echo -e "  - Dismiss stale reviews: ${BLUE}yes${NC}"
+  echo -e "  - Required approvals: ${BLUE}0 (no review required)${NC}"
   echo -e "  - Required checks: ${BLUE}validate-pr, validate-title, validate-commits, validate-branch-name${NC}"
   echo -e "  - Block force push: ${BLUE}yes${NC}"
   echo -e "  - Block deletion: ${BLUE}yes${NC}"
@@ -87,8 +123,8 @@ if [ "$SKIP_MAIN" = false ]; then
     {
       "type": "pull_request",
       "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": false,
@@ -121,7 +157,7 @@ fi
 if [ "$SKIP_STAGING" = false ]; then
   echo -e "${GREEN}Creating 'staging-protection' ruleset...${NC}"
   echo -e "  - Merge method: ${BLUE}merge commit only${NC}"
-  echo -e "  - Required approvals: ${BLUE}1${NC}"
+  echo -e "  - Required approvals: ${BLUE}0 (no review required)${NC}"
   echo -e "  - Required checks: ${BLUE}validate-pr, validate-branch-name${NC}"
   echo -e "  - Allow force push: ${BLUE}yes (for reset operations)${NC}"
   echo -e "  - Block deletion: ${BLUE}yes${NC}"
@@ -142,7 +178,7 @@ if [ "$SKIP_STAGING" = false ]; then
     {
       "type": "pull_request",
       "parameters": {
-        "required_approving_review_count": 1,
+        "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": false,
         "require_code_owner_review": false,
         "require_last_push_approval": false,
@@ -170,7 +206,7 @@ EOF
 fi
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  Rulesets Setup Complete!${NC}"
+echo -e "${GREEN}  Setup Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${YELLOW}View rulesets:${NC}"
@@ -180,13 +216,12 @@ echo -e "${YELLOW}What these rulesets enforce:${NC}"
 echo ""
 echo "  main branch:"
 echo "    - PRs must be squash merged (clean history)"
-echo "    - 1 approval required, stale reviews dismissed"
+echo "    - PR title becomes the commit message"
 echo "    - All status checks must pass"
 echo "    - No force push or deletion"
 echo ""
 echo "  staging branch:"
 echo "    - PRs must use merge commit (preserves history)"
-echo "    - 1 approval required"
 echo "    - Basic status checks must pass"
 echo "    - Force push allowed (for reset operations)"
 echo "    - No deletion"
