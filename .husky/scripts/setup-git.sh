@@ -48,6 +48,7 @@ REQUIRED_SCRIPTS=(
 # Required config files
 REQUIRED_CONFIGS=(
   "commitlint.config.js"
+  ".gitignore"
 )
 
 # Check hooks
@@ -82,7 +83,7 @@ done
 
 echo ""
 
-# Check GitHub workflows (warn only)
+# Check GitHub workflows
 echo -e "${BLUE}Checking GitHub workflows...${NC}"
 REQUIRED_WORKFLOWS=(
   ".github/workflows/branch-enforcement.yml"
@@ -92,13 +93,12 @@ REQUIRED_WORKFLOWS=(
   ".github/workflows/auto-tag-release.yml"
 )
 
-MISSING_WORKFLOWS=()
 for file in "${REQUIRED_WORKFLOWS[@]}"; do
   if [ -f "$file" ]; then
     echo -e "  ${GREEN}✓${NC} $file"
   else
-    echo -e "  ${YELLOW}⚠${NC} $file ${YELLOW}(missing - GitHub enforcement won't work)${NC}"
-    MISSING_WORKFLOWS+=("$file")
+    echo -e "  ${RED}✗${NC} $file ${RED}(MISSING)${NC}"
+    MISSING_FILES+=("$file")
   fi
 done
 
@@ -106,14 +106,8 @@ echo ""
 
 if [ ${#MISSING_FILES[@]} -gt 0 ]; then
   echo -e "${RED}ERROR: Missing required files. Cannot continue.${NC}"
-  echo "Please ensure all .husky/ files are copied to this repository."
+  echo "Please ensure all required files are copied to this repository."
   exit 1
-fi
-
-if [ ${#MISSING_WORKFLOWS[@]} -gt 0 ]; then
-  echo -e "${YELLOW}WARNING: Some GitHub workflows are missing.${NC}"
-  echo "GitHub-side enforcement (PR validation, auto-sync) won't work without them."
-  echo ""
 fi
 
 # ============================================
@@ -173,50 +167,49 @@ echo ""
 echo -e "${BLUE}Step 3: Configuring package.json scripts...${NC}"
 echo ""
 
-# Define required scripts
-declare -A REQUIRED_PKG_SCRIPTS=(
-  ["prepare"]="husky"
-  ["git:feature"]="bash .husky/scripts/git-feature.sh"
-  ["git:sync"]="bash .husky/scripts/git-sync.sh"
-  ["git:release"]="bash .husky/scripts/git-release.sh"
-  ["git:sync-feature"]="bash .husky/scripts/git-sync-feature.sh"
-  ["git:to-staging"]="bash .husky/scripts/git-to-staging.sh"
-  ["git:ship"]="bash .husky/scripts/git-ship.sh"
-  ["git:hotfix"]="bash .husky/scripts/git-hotfix.sh"
-  ["git:status"]="bash .husky/scripts/git-status.sh"
-  ["git:setup"]="bash .husky/scripts/setup-git.sh"
-  ["git:setup-rulesets"]="bash .husky/scripts/setup-rulesets.sh"
-  ["git:merge-staging"]="bash .husky/scripts/git-merge-staging.sh"
-  ["git:merge-main"]="bash .husky/scripts/git-merge-main.sh"
-)
+# Use node to add all scripts at once (handles JSON properly, avoids bash issues)
+node -e "
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+pkg.scripts = pkg.scripts || {};
 
-SCRIPTS_ADDED=0
+const requiredScripts = {
+  'prepare': 'husky',
+  'git:feature': 'bash .husky/scripts/git-feature.sh',
+  'git:sync': 'bash .husky/scripts/git-sync.sh',
+  'git:release': 'bash .husky/scripts/git-release.sh',
+  'git:sync-feature': 'bash .husky/scripts/git-sync-feature.sh',
+  'git:to-staging': 'bash .husky/scripts/git-to-staging.sh',
+  'git:ship': 'bash .husky/scripts/git-ship.sh',
+  'git:hotfix': 'bash .husky/scripts/git-hotfix.sh',
+  'git:status': 'bash .husky/scripts/git-status.sh',
+  'git:setup': 'bash .husky/scripts/setup-git.sh',
+  'git:setup-rulesets': 'bash .husky/scripts/setup-rulesets.sh',
+  'git:merge-staging': 'bash .husky/scripts/git-merge-staging.sh',
+  'git:merge-main': 'bash .husky/scripts/git-merge-main.sh'
+};
 
-for script_name in "${!REQUIRED_PKG_SCRIPTS[@]}"; do
-  script_value="${REQUIRED_PKG_SCRIPTS[$script_name]}"
+let added = 0;
+let existing = 0;
 
-  # Check if script exists in package.json
-  if grep -q "\"$script_name\"" package.json; then
-    echo -e "  ${GREEN}✓${NC} $script_name (exists)"
-  else
-    echo -e "  ${YELLOW}+${NC} Adding $script_name"
+for (const [name, value] of Object.entries(requiredScripts)) {
+  if (pkg.scripts[name]) {
+    console.log('  ✓ ' + name + ' (exists)');
+    existing++;
+  } else {
+    console.log('  + Adding ' + name);
+    pkg.scripts[name] = value;
+    added++;
+  }
+}
 
-    # Use node to add the script (handles JSON properly)
-    node -e "
-      const fs = require('fs');
-      const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-      pkg.scripts = pkg.scripts || {};
-      pkg.scripts['$script_name'] = '$script_value';
-      fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-    "
-    SCRIPTS_ADDED=$((SCRIPTS_ADDED + 1))
-  fi
-done
+fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 
-if [ $SCRIPTS_ADDED -gt 0 ]; then
-  echo ""
-  echo -e "  ${GREEN}Added $SCRIPTS_ADDED script(s) to package.json${NC}"
-fi
+if (added > 0) {
+  console.log('');
+  console.log('  Added ' + added + ' script(s) to package.json');
+}
+"
 
 echo ""
 
