@@ -86,8 +86,14 @@ jobs:
             echo "::error::One or more commit messages are invalid"
             echo ""
             echo "Expected format: type(scope): description"
-            echo "Types: feat, fix, docs, style, refactor, test, chore, release"
-            echo "Example: feat(CU-86b62v077): add user authentication"
+            echo ""
+            echo "Types: feat, fix, docs, style, refactor, test, chore"
+            echo ""
+            echo "Examples:"
+            echo "  feat(CU-abc123): add user authentication"
+            echo "  fix(CU-abc123): resolve login redirect issue"
+            echo "  docs(CU-abc123): update API documentation"
+            echo "  chore(CU-abc123): update dependencies"
             exit 1
           fi
 
