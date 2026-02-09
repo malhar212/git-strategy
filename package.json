@@ -1,0 +1,17 @@
+{
+  "name": "git-strategy",
+  "version": "0.0.0",
+  "main": "index.js",
+  "scripts": {
+    "0": "husky",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
+    "husky": "^9.1.7"
+  }
+}
