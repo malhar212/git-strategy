@@ -47,15 +47,29 @@ echo ""
 echo -e "${BLUE}Step 1: Configuring repository settings...${NC}"
 echo ""
 
-# Set squash merge to use PR title as commit message
-echo -e "  ${GREEN}Setting squash merge commit title to PR title...${NC}"
+# Set merge commit messages to use PR title
+echo -e "  ${GREEN}Setting merge commit messages to use PR title...${NC}"
 gh api "repos/${REPO}" -X PATCH --input - << 'EOF' > /dev/null
 {
   "squash_merge_commit_title": "PR_TITLE",
-  "squash_merge_commit_message": "PR_BODY"
+  "squash_merge_commit_message": "PR_BODY",
+  "merge_commit_title": "PR_TITLE",
+  "merge_commit_message": "PR_BODY"
 }
 EOF
 echo -e "  ${GREEN}✓${NC} Squash merge will use PR title as commit message"
+echo -e "  ${GREEN}✓${NC} Merge commit will use PR title as commit message"
+
+# Set GitHub Actions workflow permissions
+echo -e "  ${GREEN}Setting GitHub Actions workflow permissions...${NC}"
+gh api "repos/${REPO}/actions/permissions/workflow" -X PUT --input - << 'EOF' > /dev/null
+{
+  "default_workflow_permissions": "write",
+  "can_approve_pull_request_reviews": true
+}
+EOF
+echo -e "  ${GREEN}✓${NC} GitHub Actions has read/write permissions"
+echo -e "  ${GREEN}✓${NC} GitHub Actions can create and approve PRs"
 echo ""
 
 # ============================================
